@@ -10,11 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
-    # Configura o Node.js para compilar o Frontend
     - name: Setup Node.js
-      uses: actions/setup-node@v2
+      uses: actions/setup-node@v3
       with:
         node-version: '18'
 
@@ -24,19 +23,19 @@ jobs:
         npm install
         npm run build
 
-    # Envia o Frontend (pasta dist) para a hospedagem
+    # ▼▼▼ BLOCO ALTERADO ▼▼▼
     - name: FTP Deploy Frontend
-      uses: SamKirkland/FTP-Deploy-Action@4.1.0
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: ./frontend-novo/dist/
         server-dir: ./public_html/controle-financeiro/
+        dangerous-clean-slate: true # <-- ADICIONAMOS ESTA LINHA
 
-    # Envia o Backend para a hospedagem
     - name: FTP Deploy Backend
-      uses: SamKirkland/FTP-Deploy-Action@4.1.0
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
