@@ -9,7 +9,6 @@ import Dashboard from './Dashboard.jsx';
 import Transactions from './Transactions.jsx';
 import TransactionModal from './TransactionModal.jsx';
 
-// Para o deploy, esta URL será a do seu site. Para desenvolvimento local, usamos localhost.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 function App() {
@@ -39,16 +38,9 @@ function App() {
     fetchTransactions();
   }, []);
 
-  // ▼▼▼ BLOCO CORRIGIDO ▼▼▼
   const financialSummary = useMemo(() => {
-    const totalReceitas = transactions
-      .filter(t => t.type === 'receita')
-      .reduce((acc, t) => acc + parseFloat(t.value || 0), 0); // Correção com parseFloat
-
-    const totalDespesas = transactions
-      .filter(t => t.type === 'despesa')
-      .reduce((acc, t) => acc + parseFloat(t.value || 0), 0); // Correção com parseFloat
-
+    const totalReceitas = transactions.filter(t => t.type === 'receita').reduce((acc, t) => acc + parseFloat(t.value || 0), 0);
+    const totalDespesas = transactions.filter(t => t.type === 'despesa').reduce((acc, t) => acc + parseFloat(t.value || 0), 0);
     const saldo = totalReceitas - totalDespesas;
     return { totalReceitas, totalDespesas, saldo };
   }, [transactions]);
@@ -105,7 +97,7 @@ function App() {
     <div className="min-h-screen bg-gray-100">
       <header className="bg-white shadow-sm">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-green-600">Meu Painel Financeiro Automatizado</h1>
+          <h1 className="text-2xl font-bold text-blue-700">Painel Financeiro Automatizado Hoje</h1>
           <nav className="flex items-center gap-2">
             <TabButton id="dashboard" label="Dashboard" icon={LayoutDashboard} />
             <TabButton id="transactions" label="Transações" icon={List} />
