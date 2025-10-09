@@ -2,135 +2,98 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import axios from 'axios';
-import { initialCategories } from './data.js';
-import { LayoutDashboard, List, BrainCircuit } from 'lucide-react';
+import { LayoutDashboard, List, BrainCircuit, Settings } from 'lucide-react';
 import AIInsights from './AIInsights.jsx';
 import Dashboard from './Dashboard.jsx';
 import Transactions from './Transactions.jsx';
 import TransactionModal from './TransactionModal.jsx';
+import Categories from './Categories.jsx'; // 1. Importamos a nova tela
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 function App() {
   const [transactions, setTransactions] = useState([]);
-  const [categories] = useState(initialCategories);
+  const [categories, setCategories] = useState({ receita: [], despesa: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [transactionToEdit, setTransactionToEdit] = useState(null);
 
-  useEffect(() => {
-    const fetchTransactions = async () => {
-      setIsLoading(true);
-      try {
-        const response = await axios.get(`${API_BASE_URL}?action=get_transactions`);
-        let data = response.data;
-        if (typeof data === 'string' && data.trim().startsWith('[')) { data = JSON.parse(data); }
-        if (Array.isArray(data)) { setTransactions(data); } 
-        else { setTransactions([]); }
-      } catch (error) {
-        console.error("Erro ao buscar transações:", error);
-        setTransactions([]);
-      } finally {
-        setIsLoading(false);
+  // Função para buscar todos os dados foi movida para ser reutilizável
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [transRes, catRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}?action=get_transactions`),
+        axios.get(`${API_BASE_URL}?action=get_categories`)
+      ]);
+      let transData = transRes.data;
+      if (typeof transData === 'string' && transData.trim().startsWith('[')) { transData = JSON.parse(transData); }
+      if (Array.isArray(transData)) { setTransactions(transData); } else { setTransactions([]); }
+      let catData = catRes.data;
+      if (typeof catData === 'string' && catData.trim().startsWith('[')) { catData = JSON.parse(catData); }
+      if (Array.isArray(catData)) {
+        const organizedCategories = {
+          receita: catData.filter(c => c.type === 'receita'),
+          despesa: catData.filter(c => c.type === 'despesa'),
+        };
+        setCategories(organizedCategories);
+      } else {
+        setCategories({ receita: [], despesa: [] });
       }
-    };
-    fetchTransactions();
+    } catch (error) {
+      console.error("Erro ao buscar dados iniciais:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData(); // Busca os dados iniciais
   }, []);
 
-  const financialSummary = useMemo(() => {
-    const totalReceitas = transactions.filter(t => t.type === 'receita').reduce((acc, t) => acc + parseFloat(t.value || 0), 0);
-    const totalDespesas = transactions.filter(t => t.type === 'despesa').reduce((acc, t) => acc + parseFloat(t.value || 0), 0);
-    const saldo = totalReceitas - totalDespesas;
-    return { totalReceitas, totalDespesas, saldo };
-  }, [transactions]);
+  // 2. NOVAS FUNÇÕES para gerenciar categorias
+  const handleAddCategory = async (categoryData) => {
+    try {
+      await axios.post(`${API_BASE_URL}?action=add_category`, categoryData);
+      fetchData(); // Busca os dados novamente para atualizar a lista
+    } catch (error) {
+      console.error("Erro ao adicionar categoria:", error);
+    }
+  };
 
-  const handleSaveTransaction = async (transactionData) => {
-    const isEditing = transactions.some(t => t.id === transactionData.id);
-    if (isEditing) {
+  const handleDeleteCategory = async (idToDelete) => {
+    if (window.confirm("Você tem certeza? Excluir uma categoria não afeta transações já existentes.")) {
       try {
-        await axios.post(`${API_BASE_URL}?action=update_transaction`, transactionData);
-        const updatedTransactions = transactions.map(t => t.id === transactionData.id ? transactionData : t);
-        setTransactions(updatedTransactions.sort((a, b) => new Date(b.date) - new Date(a.date)));
-        handleCloseModal();
+        await axios.post(`${API_BASE_URL}?action=delete_category`, { id: idToDelete });
+        fetchData(); // Busca os dados novamente para atualizar a lista
       } catch (error) {
-        console.error("Erro ao atualizar transação:", error);
-      }
-    } else {
-      try {
-        const response = await axios.post(`${API_BASE_URL}?action=add_transaction`, transactionData);
-        if (response.data.success) {
-          const newTransactionWithRealId = { ...transactionData, id: response.data.id };
-          setTransactions(prev => [...prev, newTransactionWithRealId].sort((a, b) => new Date(b.date) - new Date(a.date)));
-        }
-        handleCloseModal();
-      } catch (error) {
-        console.error("Erro ao salvar a transação:", error);
+        console.error("Erro ao excluir categoria:", error);
       }
     }
   };
-  
-  const handleDeleteTransaction = async (idToDelete) => {
-    if (window.confirm("Você tem certeza que deseja excluir esta transação?")) {
-      try {
-        await axios.post(`${API_BASE_URL}?action=delete_transaction`, { id: idToDelete });
-        setTransactions(prev => prev.filter(transaction => transaction.id !== idToDelete));
-      } catch (error) {
-        console.error("Erro ao excluir transação:", error);
-      }
-    }
-  };
-  
-  const handleOpenAddModal = () => { setTransactionToEdit(null); setIsModalOpen(true); };
-  const handleOpenEditModal = (transaction) => { setTransactionToEdit(transaction); setIsModalOpen(true); };
-  const handleCloseModal = () => { setIsModalOpen(false); setTransactionToEdit(null); };
 
-  const TabButton = ({ id, label, icon: Icon }) => (
-    <button onClick={() => setActiveTab(id)} className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === id ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-200'}`}><Icon size={18} />{label}</button>
-  );
+  // ... (resto das funções handle... e financialSummary sem alteração)
 
   if (isLoading) {
-    return <div className="flex justify-center items-center h-screen font-bold text-xl">Carregando dados do banco...</div>;
+    return <div className="flex justify-center items-center h-screen font-bold text-xl">Carregando dados...</div>;
   }
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <header className="bg-white shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-blue-700">Painel Financeiro Automatizado Hoje</h1>
-          <nav className="flex items-center gap-2">
-            <TabButton id="dashboard" label="Dashboard" icon={LayoutDashboard} />
-            <TabButton id="transactions" label="Transações" icon={List} />
-            <TabButton id="ai-insights" label="Insights IA" icon={BrainCircuit} />
-          </nav>
-        </div>
-      </header>
+      <header className="bg-white shadow-sm">{/* ... (sem alteração) ... */}</header>
       <main className="container mx-auto p-4">
-        {activeTab === 'dashboard' && <Dashboard 
-          summary={financialSummary} 
-          transactions={transactions} 
+        {activeTab === 'dashboard' && <Dashboard /* ... */ />}
+        {activeTab === 'transactions' && <Transactions /* ... */ />}
+        {/* 3. SUBSTITUÍMOS o placeholder pela nossa nova tela */}
+        {activeTab === 'categories' && <Categories 
           categories={categories} 
+          onAddCategory={handleAddCategory} 
+          onDeleteCategory={handleDeleteCategory} 
         />}
-        {activeTab === 'transactions' && <Transactions 
-          transactions={transactions} 
-          categories={categories} 
-          onAddTransaction={handleOpenAddModal} 
-          onDeleteTransaction={handleDeleteTransaction}
-          onEditTransaction={handleOpenEditModal}
-        />}
-        {activeTab === 'ai-insights' && <AIInsights 
-          transactions={transactions} 
-          categories={categories} 
-        />}
+        {activeTab === 'ai-insights' && <AIInsights /* ... */ />}
       </main>
-      
-      <TransactionModal 
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onSave={handleSaveTransaction}
-        categories={categories}
-        transactionToEdit={transactionToEdit}
-      />
+      <TransactionModal /* ... */ />
     </div>
   );
 }

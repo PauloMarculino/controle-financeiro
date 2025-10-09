@@ -1,11 +1,19 @@
 // frontend-novo/src/data.js
 export const initialCategories = {
   despesa: [
-    { id: 'd1', name: 'Moradia' }, { id: 'd2', name: 'Alimentação' }, { id: 'd3', name: 'Transporte' },
-    { id: 'd4', name: 'Lazer' }, { id: 'd5', name: 'Saúde' }, { id: 'd6', name: 'Educação' },
+    { id: 'd1', name: 'Moradia' },
+    { id: 'd2', name: 'Alimentação' },
+    { id: 'd3', name: 'Transporte' },
+    { id: 'd4', name: 'Lazer' },
+    { id: 'd5', name: 'Saúde' },
+    { id: 'd6', name: 'Educação' },
+    { id: 'd7', name: 'Assinaturas' }, // Nova Categoria
+    { id: 'd8', name: 'Ferramentas Online' }, // Nova Categoria
   ],
   receita: [
-    { id: 'r1', name: 'Salário' }, { id: 'r2', name: 'Freelance' }, { id: 'r3', name: 'Investimentos' },
+    { id: 'r1', name: 'Salário' },
+    { id: 'r2', name: 'Freelance' },
+    { id: 'r3', name: 'Investimentos' },
   ],
 };
 export const initialTransactions = [
